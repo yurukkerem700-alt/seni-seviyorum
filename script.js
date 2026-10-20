@@ -2,7 +2,7 @@ const phrases = [
   'I love you',
   'Seni seviyorum',
   'Te amo',
-  'Je t\'aime',
+  "Je t'aime",
   'Ich liebe dich',
   'Ti amo',
   'Eu te amo',
@@ -11,28 +11,149 @@ const phrases = [
   '愛してる',
   '我爱你',
   'मैं तुमसे प्यार करता हूँ',
-  'Σ\' αγαπώ',
+  "Σ' αγαπώ",
   'Ik hou van jou',
   'Jag älskar dig',
   'Kocham cię',
   'ฉันรักเธอ',
   'Anh yêu em',
   'Aku cinta kamu',
-  'Я тебе кохаю'
+  'Я тебе кохаю',
+  'I miss you',
+  'Beni seviyorsun',
+  'Love you',
+  'Aşkım',
+  'Mahal kita',
+  'Seni seviyorum',
+  'Te quiero',
+  'J’aime',
+  'Kocham cię',
+  'I adore you'
 ];
 
 const canvas = document.getElementById('heartCanvas');
 const ctx = canvas.getContext('2d');
-
 const state = {
   width: 0,
   height: 0,
   scale: 1,
-  rows: [],
-  t: 0,
-  pulse: 0,
-  lastPaint: 0
+  items: [],
+  visibleCount: 0,
+  lastReveal: 0,
+  lastTs: 0,
 };
+
+function mulberry32(a) {
+  return function () {
+    let t = (a += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function heartPoint(t) {
+  const x = 16 * Math.pow(Math.sin(t), 3);
+  const y = 13 * Math.cos(t) -
+    5 * Math.cos(2 * t) -
+    2 * Math.cos(3 * t) -
+    Math.cos(4 * t);
+  return { x, y };
+}
+
+function heartRows() {
+  const rows = [];
+  const points = [];
+
+  for (let i = 0; i <= 720; i++) {
+    const t = (2 * Math.PI * i) / 720;
+    points.push(heartPoint(t));
+  }
+
+  for (let y = 14; y >= -15; y -= 0.9) {
+    const xs = [];
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i];
+      const b = points[i + 1];
+      const y1 = a.y;
+      const y2 = b.y;
+
+      if ((y1 <= y && y < y2) || (y2 <= y && y < y1)) {
+        const x = a.x + ((y - y1) * (b.x - a.x)) / (y2 - y1);
+        xs.push(x);
+      }
+    }
+
+    xs.sort((a, b) => a - b);
+    for (let i = 0; i < xs.length - 1; i += 2) {
+      rows.push({ y, left: xs[i], right: xs[i + 1] });
+    }
+  }
+
+  return rows;
+}
+
+function measureText(text, size) {
+  ctx.font = `${size}px Arial`;
+  return ctx.measureText(text).width;
+}
+
+function buildLayout() {
+  const rows = heartRows();
+  const rng = mulberry32(11);
+  const items = [];
+
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+    const row = rows[rowIndex];
+    const width = row.right - row.left;
+    if (width <= 0) continue;
+
+    let cursor = row.left + 4;
+    const line = [];
+
+    while (cursor < row.right - 8) {
+      const phrase = phrases[Math.floor(rng() * phrases.length)];
+      const size = 9 + Math.floor(rng() * 4);
+      const textWidth = measureText(phrase, size) + 12;
+
+      if (cursor + textWidth > row.right - 4) break;
+
+      const x = cursor + textWidth / 2;
+      const color = `hsl(${Math.floor(rng() * 36) + 350}, 90%, ${64 + Math.random() * 18}%)`;
+
+      line.push({
+        text: phrase,
+        x,
+        y: row.y,
+        size,
+        color,
+        alpha: 0,
+        drift: rng() * 0.8 - 0.4,
+      });
+
+      cursor += textWidth + 8;
+    }
+
+    if (line.length > 0) {
+      const lastItem = line[line.length - 1];
+      const totalWidth = lastItem.x + lastItem.size * 0.5;
+      const gap = row.right - totalWidth;
+      const span = Math.max(1, line.length - 1);
+
+      for (let i = 0; i < line.length; i++) {
+        const item = line[i];
+        item.x += gap * (i / span);
+        item.y += (rng() - 0.5) * 2;
+        items.push(item);
+      }
+    }
+  }
+
+  state.items = items;
+  state.visibleCount = 0;
+  state.lastReveal = 0;
+}
 
 function resizeCanvas() {
   const ratio = window.devicePixelRatio || 1;
@@ -50,115 +171,16 @@ function resizeCanvas() {
   buildLayout();
 }
 
-function heartPoint(t) {
-  const x = 16 * Math.pow(Math.sin(t), 3);
-  const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
-  return { x, y };
-}
-
-function heartPath() {
-  const points = [];
-  for (let i = 0; i <= 720; i += 1) {
-    const t = (2 * Math.PI * i) / 720;
-    points.push(heartPoint(t));
-  }
-  return points;
-}
-
-function bindRows() {
-  const heart = heartPath();
-  const rows = [];
-  const top = -14;
-  const bottom = 14;
-  const rowHeight = 0.8;
-
-  for (let y = top; y > bottom; y -= rowHeight) {
-    const xs = [];
-
-    for (let i = 0; i < heart.length - 1; i += 1) {
-      const a = heart[i];
-      const b = heart[i + 1];
-      const y1 = a.y;
-      const y2 = b.y;
-
-      if ((y1 <= y && y < y2) || (y2 <= y && y < y1)) {
-        const x = a.x + ((y - y1) * (b.x - a.x)) / (y2 - y1);
-        xs.push(x);
-      }
-    }
-
-    xs.sort((a, b) => a - b);
-
-    for (let i = 0; i < xs.length - 1; i += 2) {
-      rows.push({ y, left: xs[i], right: xs[i + 1] });
-    }
-  }
-
-  return rows;
-}
-
-function buildLayout() {
-  const rows = bindRows();
-  const placed = [];
-  const rng = mulberry32(11);
-
-  let offset = 0;
-  for (const row of rows) {
-    const spacing = 12;
-    const width = row.right - row.left;
-    if (width <= 0) continue;
-
-    let cursor = row.left + 4;
-    const line = [];
-
-    while (cursor < row.right - 8) {
-      const phrase = phrases[(Math.floor(rng() * phrases.length) + offset) % phrases.length];
-      const size = 9 + Math.floor(rng() * 4);
-      const font = `${size}px Arial`;
-      const measure = ctx.measureText(phrase);
-      const requiredWidth = measure.width + 12;
-
-      if (cursor + requiredWidth > row.right - 4) break;
-
-      line.push({ text: phrase, x: cursor + requiredWidth / 2, y: row.y, size, color: `hsl(${Math.floor(rng() * 40) + 340}, 80%, ${70 + Math.random() * 12}%)` });
-      cursor += requiredWidth + spacing;
-    }
-
-    if (line.length > 0) {
-      const gap = row.right - line[line.length - 1].x - 18;
-      for (let i = 0; i < line.length; i += 1) {
-        const item = line[i];
-        item.x += gap * (i / Math.max(1, line.length - 1));
-        item.y += (rng() - 0.5) * 2;
-        placed.push(item);
-      }
-    }
-
-    offset += 1;
-  }
-
-  state.rows = placed;
-}
-
-function mulberry32(a) {
-  return function () {
-    let t = (a += 0x6D2B79F5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function drawHeartBackground() {
+function drawBackground(time) {
   const cx = state.width / 2;
-  const cy = state.height / 2 + 10;
-  const scale = state.scale * 24;
+  const cy = state.height / 2 + 12;
+  const scale = state.scale * 22.8;
 
-  ctx.fillStyle = '#060208';
+  ctx.fillStyle = '#040208';
   ctx.fillRect(0, 0, state.width, state.height);
 
   ctx.beginPath();
-  for (let i = 0; i <= 720; i += 1) {
+  for (let i = 0; i <= 720; i++) {
     const t = (2 * Math.PI * i) / 720;
     const p = heartPoint(t);
     const x = cx + p.x * scale;
@@ -168,55 +190,59 @@ function drawHeartBackground() {
   }
   ctx.closePath();
 
-  const grad = ctx.createRadialGradient(cx, cy - 25, 20, cx, cy, 360 * state.scale);
-  grad.addColorStop(0, 'rgba(255, 112, 146, 0.35)');
-  grad.addColorStop(0.4, 'rgba(186, 20, 67, 0.18)');
-  grad.addColorStop(1, 'rgba(8, 4, 11, 0.2)');
-
-  ctx.fillStyle = grad;
+  const glow = ctx.createRadialGradient(cx, cy - 30, 30, cx, cy, 330);
+  glow.addColorStop(0, 'rgba(255, 80, 110, 0.24)');
+  glow.addColorStop(0.45, 'rgba(150, 0, 40, 0.12)');
+  glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow;
   ctx.fill();
 
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = 'rgba(255, 247, 250, 0.1)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 1.5;
   ctx.stroke();
+
+  const flicker = Math.sin(time * 0.0025) * 0.08;
+  ctx.fillStyle = `rgba(255, 0, 64, ${0.1 + flicker})`;
+  ctx.fillRect(0, 0, state.width, state.height);
 }
 
-function drawRows(time) {
+function drawItems(time) {
   const cx = state.width / 2;
-  const cy = state.height / 2 + 10;
-  const scale = state.scale * 24;
+  const cy = state.height / 2 + 12;
+  const scale = state.scale * 22.8;
 
-  ctx.save();
-  ctx.translate(cx, cy);
-  const ramp = 0.2 + Math.sin(time * 0.002) * 0.08;
-  ctx.scale(1 + ramp, 1 + ramp);
-  ctx.translate(-cx, -cy);
-
-  for (const item of state.rows) {
+  for (let i = 0; i < state.visibleCount; i++) {
+    const item = state.items[i];
     const x = cx + item.x * scale;
-    const y = cy - item.y * scale;
-    const offset = Math.sin(time * 0.004 + item.x + item.y) * 4;
+    const y = cy - item.y * scale + Math.sin(time * 0.004 + i * 0.4) * 1.8;
+    const alpha = Math.min(1, item.alpha + 0.06);
 
     ctx.font = `${item.size}px Arial`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    ctx.fillStyle = 'rgba(4, 2, 10, 0.8)';
-    ctx.fillText(item.text, x + 2, y + 1 + offset);
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillText(item.text, x + 2, y + 2);
 
-    ctx.fillStyle = item.color;
-    ctx.fillText(item.text, x, y + offset);
+    ctx.fillStyle = item.color.replace(')', `, ${alpha})`).replace('hsl', 'hsla');
+    ctx.fillText(item.text, x, y);
   }
-
-  ctx.restore();
 }
 
-function render(time) {
-  drawHeartBackground();
-  drawRows(time);
-  requestAnimationFrame(render);
+function animate(now) {
+  drawBackground(now);
+
+  const stepDelay = 18;
+  if (now - state.lastReveal > stepDelay && state.visibleCount < state.items.length) {
+    state.visibleCount += 1;
+    state.items[state.visibleCount - 1].alpha = 1;
+    state.lastReveal = now;
+  }
+
+  drawItems(now);
+  requestAnimationFrame(animate);
 }
 
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
-requestAnimationFrame(render);
+requestAnimationFrame(animate);
