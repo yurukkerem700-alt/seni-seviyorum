@@ -1,20 +1,141 @@
-<!DOCTYPE html>
-<html lang="tr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="description"
-      content="Seni seviyorum kalbi - farklı dillerde sevgi ifadeleri"
-    />
-    <title>Seni Seviyorum</title>
-    <link rel="stylesheet" href="./style.css" />
-  </head>
-  <body>
-    <main class="page">
-      <canvas id="heartCanvas" aria-label="Seni seviyorum kalbi"></canvas>
-    </main>
 
-    <script src="./script.js"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Our Little Universe 💙</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Georgia, serif;
+  text-align: center;
+  color: #36577b;
+  background: linear-gradient(160deg,#eaf7ff,#d7eaff,#f9efff);
+  overflow-x: hidden;
+}
+main { max-width: 620px; margin: auto; padding: 35px 20px 55px; }
+h1 { font-size: 2.4rem; margin: 12px 0; }
+p { line-height: 1.7; }
+.heart {
+  font-size: 90px;
+  animation: float 2s ease-in-out infinite;
+  filter: drop-shadow(0 8px 12px #91b9e6);
+}
+@keyframes float {
+  50% { transform: translateY(-12px) scale(1.06); }
+}
+.card {
+  background: #ffffffb8;
+  border: 1px solid #ffffff;
+  border-radius: 24px;
+  padding: 22px;
+  margin: 22px 0;
+  box-shadow: 0 10px 30px #83a9d522;
+}
+.photos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.photos img {
+  width: 100%;
+  height: 190px;
+  object-fit: cover;
+  border-radius: 16px;
+  background: #dbeaff;
+}
+button {
+  border: 0;
+  border-radius: 30px;
+  padding: 14px 20px;
+  margin: 7px;
+  background: #82b5ed;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+}
+#surprise { display: none; }
+footer { font-size: .85rem; opacity: .8; margin-top: 30px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="heart">💙</div>
+  <p>♡ a tiny corner of the universe, just for us ♡</p>
+
+  <h1>Helloo, my princess ✨</h1>
+  <p>Welcome to our little universe.</p>
+
+  <section class="card">
+    <h2>Me & You 🫶🏻</h2>
+    <p>
+      Two hearts, a little bit of memories together,
+      but so many little moments still to come.
+    </p>
+    <p><strong>Forever your favourite person 💌</strong></p>
+  </section>
+
+  <section class="card">
+    <h2>Our little memories 📸</h2>
+    <div class="photos">
+      <img src="photo1.jpg" alt="Our memory one">
+      <img src="photo2.jpg" alt="Our memory two">
+    </div>
+    <p>Every picture has a little piece of my heart.</p>
+  </section>
+
+  <section class="card">
+    <h2>A little something for you 🎧</h2>
+    <audio id="song" src="music.mp3" loop></audio>
+    <button onclick="toggleMusic()" id="musicBtn">
+      ♫ Play our song
+    </button>
+    <p id="musicNote">A little melody, just for you.</p>
+  </section>
+
+  <section class="card">
+    <h2>One tiny surprise 🎁</h2>
+    <p>There's something I want you to know...</p>
+    <button onclick="reveal()">Open your surprise 💌</button>
+    <div id="surprise">
+      <h2>You're my favourite. 💗</h2>
+      <p>
+        Out of all the people in this world,
+        I'm so glad our paths crossed.
+        Thank you for being a special part of my story.
+        Here's to all the memories still waiting for us. 🦋
+      </p>
+      <div>💗 💙 💗</div>
+    </div>
+  </section>
+
+  <footer>made with love, just for you ♡</footer>
+</main>
+
+<script>
+function toggleMusic() {
+  const song = document.getElementById("song");
+  const btn = document.getElementById("musicBtn");
+
+  if (song.paused) {
+    song.play().then(() => {
+      btn.textContent = "Ⅱ Pause our song";
+    }).catch(() => {
+      document.getElementById("musicNote").textContent =
+        "Add music.mp3 to your repository first 💙";
+    });
+  } else {
+    song.pause();
+    btn.textContent = "♫ Play our song";
+  }
+}
+
+function reveal() {
+  document.getElementById("surprise").style.display = "block";
+}
+</script>
+</body>
 </html>
